@@ -126,3 +126,39 @@ Clean simple multi-tone gradient background. High quality, professional, team co
 
 > 生成失败时的兜底：在 `README.md` 里列出待手动补充的头像文件名，并附上推荐 prompt。
 > 同时提醒用户：自动生成的头像可以手动替换（512×512，PNG/JPG，≤500KB）。
+
+## 六、别搞混：专家头像 vs 技能图标
+
+两者都叫「图片」，规则也像（512×512、PNG/JPG、≤500KB），但**归属完全不同**：
+
+| | 专家头像 | 技能图标 |
+|---|---|---|
+| 给谁用 | 专家在专家中心的展示图 | 技能在市场上架时的图标 |
+| 放哪 | 专家包内 `avatars/`，文件名由 `plugin.json` 的 `avatar` 声明 | 技能目录下 `icons/` |
+| 进不进包 | **要进**（专家包必须带，缺了校验会报） | **不进**（打包器一律排除） |
+| 怎么提交 | 随专家包一起上传 | 上架时在平台「图标」处**单独**上传 |
+| 用哪个脚本 | `prepare_avatar.py --center --clean` | `make_icon.py`（提示词 + 裁切 + 清标 + 压到 512 一步到位） |
+| 张数 | Agent 型 1 张；Team 型 N+1 张 | 1 张 |
+| 画风 | 人物头像（漫画 / 插画风） | 具象物件的应用图标（简洁几何、居中、可缩到 64px） |
+
+典型误用有两种，都真实出现过：
+
+- 把技能图标塞进技能 zip —— 平台不认，且白占体积。技能图标是**表单里的一个字段**，不是包里的文件。
+- 拿 `prepare_avatar.py` 去处理技能图标 —— 它按 `avatars/` 找文件，会找不到；技能图标走 `make_icon.py`。
+
+### 技能图标怎么做
+
+```bash
+# ① 提示词（按本技能 SKILL.md 的 display_name / description 拼，贴合技能身份）
+python scripts/make_icon.py --prompt
+
+# ② 交给 ImageGen（size 用 1024x1024），生成图回来做后处理
+#    默认：居中裁切 + 清右下角生成标 + 缩到 512×512 + 压到 ≤500KB
+python scripts/make_icon.py <生成图>            # 落盘到本技能 icons/
+
+# ③ 上传前自查
+python scripts/make_icon.py --check icons/*.png
+```
+
+图标 prompt 的要点与头像不同：**单一主体、居中、不要文字**，缩小到 64px 仍要能认出来；
+不要人物特写，用 1~2 个具象物件表达「这个技能做什么」。

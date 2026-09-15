@@ -9,7 +9,7 @@ description_zh: >-
 description_en: >-
   Generate, validate, install and package WorkBuddy Expert packages (Agent / Team) compliant with the open.workbuddy.cn platform spec.
 category: development
-version: 1.3.1
+version: 1.3.2
 author: 刘玉明
 trigger:
   - 打包专家
@@ -45,6 +45,7 @@ agent_created: true
 > - 上架 open.workbuddy.cn：**专家**传插件形态包（`--platform`）；**技能**传技能目录包（默认产出）
 > - **本技能自己是个技能，不是专家**：上传时传 `<技能名>/SKILL.md` 那种目录包，
 >   不要给它合成 `plugin.json`、不要套 `skills/` 子目录 —— 那样会报「压缩包缺少 SKILL.md 文件」
+> - 技能**图标**（512×512 / ≤500KB）发布时在平台**单独**上传，**不进 zip**；用 `make_icon.py` 生成
 
 **以下命令都在本技能目录下执行**（`~/.workbuddy/skills/expert-packager/`）。
 
@@ -62,6 +63,7 @@ agent_created: true
 
 ```
 1. 定类型  → 2. 生成骨架 → 3. 生成头像 → 4. 填内容 → 5. 校验 → 6. 安装 → 7. 打包
+（要发布本技能自己时，另走一步：用 make_icon.py 出图标，上架时单独上传）
 ```
 
 ### Step 1 · 生成骨架
@@ -202,6 +204,36 @@ python scripts/pack_plugin.py <专家目录> --dry-run
 
 上传形态与常见报错见 `references/open-platform.md`。
 
+### Step 7 · 技能图标（**本技能自己**的，发布时单独上传）
+
+> 注意区分：Step 2 的 `prepare_avatar.py` 处理的是**专家头像**（`avatars/`，要**打进专家包**）；
+> 这里生成的是**技能自己的图标**，由平台单独收，**不进技能包**。
+
+```bash
+# ① 拿提示词（按本技能 SKILL.md 的展示名与描述拼，保证贴合技能身份）
+python scripts/make_icon.py --prompt
+
+# ② 把提示词交给 ImageGen（size 用 1024x1024），再拿生成图做后处理
+#    默认「居中裁切 + 清右下角生成标 + 缩到 512×512 + 压到 ≤500KB」
+python scripts/make_icon.py <生成图>            # 输出到本技能 icons/
+python scripts/make_icon.py <生成图> --out <目录> --name <技能名>
+
+# ③ 上传前自查（只校验，不改文件）
+python scripts/make_icon.py --check icons/*.png
+```
+
+| 开关 | 作用 |
+|---|---|
+| `--prompt [--lang en]` | 只打印给 ImageGen 用的提示词，不处理图片 |
+| `--check` | 只做合规检查：512×512、PNG/JPG、≤500KB |
+| `--no-center` / `--no-clean` | 关掉居中裁切 / 关掉清生成标（默认都开） |
+| `--fmt png\|jpg` | 优先输出格式（默认 png；压不进 500KB 时自动降质或换格式） |
+| `--out` / `--name` | 输出目录 / 文件名前缀 |
+
+- 输出目录默认是本技能根下的 `icons/`。该目录**打包时一律排除**，不会进 zip。
+- 上传技能时，在开放平台创建技能的「图标」处单独提交这个文件。
+- 原理与踩坑（为什么要居中裁切、生成标在哪）见 `references/avatar-spec.md` 末节。
+
 ## 三、命令速查
 
 | 目的 | 命令 |
@@ -211,7 +243,9 @@ python scripts/pack_plugin.py <专家目录> --dry-run
 | 带字段一条命令生成 | `python scripts/new_expert.py <name> --type agent --meta meta.json` |
 | 校验 | `python scripts/validate_expert.py <dir>` |
 | 安装 / 重新注册 | `python scripts/install_expert.py <dir>` |
-| 压头像 / 图标 | `python scripts/prepare_avatar.py <dir> --center --clean` |
+| 压专家头像 | `python scripts/prepare_avatar.py <dir> --center --clean` |
+| 生成技能图标 | `python scripts/make_icon.py --prompt` → `make_icon.py <生成图>` |
+| 技能图标自查 | `python scripts/make_icon.py --check icons/*.png` |
 | 打本机包 | `python scripts/pack_plugin.py <dir> --out <out>` |
 | 打**专家**上架包（插件形态） | `python scripts/pack_plugin.py <专家目录> --platform --out <out>` |
 | 打**技能**上传包（技能目录） | `python scripts/pack_plugin.py <技能目录> --out <out>` |
@@ -222,6 +256,10 @@ python scripts/pack_plugin.py <专家目录> --dry-run
 - `scripts/` —— 全部执行逻辑（`_common.py` 是被各脚本 import 的共用库，不单独调用）
 - `references/` —— 按需加载：`expert-spec.md`（plugin.json 字段与分类）、`agent-md-spec.md`（Agent MD 结构）、`avatar-spec.md`（头像与 prompt 构建）、`open-platform.md`（打包上传形态与排错）
 - `templates/` —— Agent / 主理人 / 团员三种 MD 骨架（`agent.md`、`team-lead.md`、`team-member.md`），`new_expert.py` 会直接读取
+- `icons/` —— 本技能自己的发布图标（由 `make_icon.py` 生成），**不进技能包**，发布时在平台单独上传
+
+**打包时默认排除**：构建缓存（`__pycache__`、`node_modules`…）、**仓库元数据**（`.git/`、`.gitignore`、`.gitattributes`、`README.md`、`LICENSE`…）、**发布图标**（`icons/`）。
+包只装技能本身，仓库的东西一个都不带。
 
 核心流程只用标准库。Pillow 仅在压缩头像时用到，属于可选依赖：`python scripts/setup.py --install-pillow`。
 
@@ -245,9 +283,22 @@ python scripts/pack_plugin.py <专家目录> --dry-run
 16. **技能包按专家的位置装** —— 技能解压到 `~/.workbuddy/skills/<技能名>/`，专家才放 `plugins/marketplaces/my-experts/plugins/`。技能放到 marketplaces 下不会生效。
 17. **技能 frontmatter 缺必填字段** —— 上传要求 `description` / `description_zh` / `description_en` / `version` / `author` 五项齐全，缺一个平台就报必填缺失。
 18. **技能包里出现三级目录** —— 平台只接受「技能根/二级目录/文件」，模板目录里再嵌套一层就会被判「目录层级超限」。模板文件一律平铺在 `templates/` 下。
-19. **生成图直接缩放当图标** —— ImageGen 出的是「1024×1024 圆角方块 + 外圈留白」，右下角还带生成标。整图缩放会带着标和不对称留白；随手按固定框硬切（如 `(0,0,900,900)`）会**一边内容被截、另一边留白**。统一走 `prepare_avatar.py --center --clean`。
+19. **生成图直接缩放当图标** —— ImageGen 出的是「1024×1024 圆角方块 + 外圈留白」，右下角还带生成标。整图缩放会带着标和不对称留白；随手按固定框硬切（如 `(0,0,900,900)`）会**一边内容被截、另一边留白**。统一走 `prepare_avatar.py --center --clean`（专家头像）或 `make_icon.py`（技能图标，默认就带这两步）。
+20. **把图标打进技能包** —— 技能图标是平台在「图标」处**单独**收的，塞进 zip 只是多一批无用文件。`icons/` 已在打包时排除；上传时单独提交那张 512×512 的图。
+21. **把 `.git` / `README.md` 一类打进包** —— 技能目录同时是个 git 仓库时最容易踩：包里混进 `.gitignore`、`.gitattributes`、`README.md` 这些东西，既没用又可能漏出仓库信息。打包器已按「构建缓存 / 仓库元数据 / 发布图标」三类排除，**别改回去**。
 
 ## 变更记录
+
+### v1.3.2
+
+- **新增 `make_icon.py`：技能图标能力**（提示词构建 → 居中裁切 + 清生成标 → 512×512 / ≤500KB → 上传前自查）。
+  - `--prompt` 按本技能 SKILL.md 的展示名与描述拼 ImageGen 提示词；`--check` 只做合规检查；
+    直接传生成图则输出到技能根下的 `icons/`。
+  - **图标不进技能包**：`icons/` 在打包时一律排除 —— 平台是在创建技能时的「图标」处单独收这个文件。
+  - 与专家头像（`avatars/`，**要**打进专家包）是两回事，见 Step 7 的提示。
+- **打包排除规则补齐**：`.git/`、`.gitignore`、`.gitattributes`、`README.md`、`CHANGELOG.md`、`LICENSE` 等
+  **仓库元数据**与 `icons/` **发布图标**不再进包，排除项会按目录归并后打印出来（`.git/` 不再刷屏 50 行）。
+- 新增坑 20（图标打进包）、坑 21（把 `.git` / `README.md` 打进包）。
 
 ### v1.3.1
 
@@ -303,5 +354,5 @@ python scripts/pack_plugin.py <专家目录> --dry-run
 
 - `references/expert-spec.md` —— 专家包规范：目录结构、plugin.json 全字段、12 类行业分类、Agent/Team 模板、11 条铁律
 - `references/agent-md-spec.md` —— Agent MD 规范：frontmatter、普通 Agent / 主理人 / 团员正文结构、写作质量要求
-- `references/avatar-spec.md` —— 头像规范：硬性要求、prompt 构建、团队风格统一、背景色调映射
+- `references/avatar-spec.md` —— 头像规范：硬性要求、prompt 构建、团队风格统一、背景色调映射；末节讲**技能图标**（与专家头像的区别：图标不进包，发布时单独上传）
 - `references/open-platform.md` —— 开放平台打包与上传：**技能 / 专家两条上传线的形态差异**（`{skill-name}/SKILL.md` vs 插件包）、技能 frontmatter 必填字段、插件目录结构、路径规则、marketplace.json、常见报错对照

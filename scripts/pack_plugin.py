@@ -17,6 +17,12 @@
 
   · --flat-root  去掉 zip 顶层的 <名字>/，zip 根即包根（平台报「不接受顶层目录」时用）
 
+不进包的东西（包只装包本身）：
+  · 构建缓存 / 仓库元数据：`__pycache__`、`.git/`、`.gitignore`、`.gitattributes`、
+    `README.md`、`LICENSE` …—— 只对 git / 托管平台有意义，与包能不能用无关
+  · 发布图标：`icons/` —— 技能图标由平台在创建技能时**单独**收，
+    不随 zip 走（用 make_icon.py 生成：512×512 / PNG·JPG / ≤500KB）
+
 退出码：0 成功 / 1 参数或校验问题
 """
 
@@ -37,8 +43,13 @@ from _common import (  # noqa: E402
 )
 
 SKIP_DIRS = {"__pycache__", "node_modules", ".venv", "venv", ".git", ".idea", ".vscode",
-             ".pytest_cache", ".mypy_cache", ".review-cache"}
-SKIP_NAMES = {".DS_Store", "Thumbs.db", ".gitkeep", ".downloaded_at", "desktop.ini"}
+             ".pytest_cache", ".mypy_cache", ".review-cache",
+             # 发布图标：技能图标由平台在「图标」处单独收，不进包（见 make_icon.py）
+             "icons", "icon"}
+# 仓库元数据：只对 git / 托管平台有意义，跟包能不能用无关，一律不进包
+SKIP_NAMES = {".DS_Store", "Thumbs.db", ".gitkeep", ".downloaded_at", "desktop.ini",
+              "README.md", "README_zh.md", "README_EN.md", "CHANGELOG.md",
+              "CONTRIBUTING.md", "LICENSE", "LICENSE.md", "LICENSE.txt"}
 SKIP_SUFFIX = {".pyc", ".pyo", ".log", ".tmp", ".bak"}
 
 
@@ -66,6 +77,31 @@ def detect_kind(root: Path) -> str:
 
 def _collect(root: Path) -> list[Path]:
     return [p for p in sorted(root.rglob("*")) if _keep(p, root)]
+
+
+def _excluded(root: Path) -> list[Path]:
+    """被排除的文件（用于把「排除了什么」讲清楚，而不是悄悄丢掉）。"""
+    return [p for p in sorted(root.rglob("*")) if p.is_file() and not _keep(p, root)]
+
+
+def _summarize(paths: list[Path], root: Path, limit: int = 8) -> list[str]:
+    """把排除项压成短清单：整目录被排除的合成一行（否则 `.git/` 会刷屏 50 行）。"""
+    buckets: dict[str, list[str]] = {}
+    for p in paths:
+        rel = p.relative_to(root)
+        if len(rel.parts) > 1:
+            buckets.setdefault(rel.parts[0], []).append(rel.as_posix())
+        else:
+            buckets.setdefault(rel.as_posix(), []).append(rel.as_posix())
+    lines = []
+    for key, members in sorted(buckets.items()):
+        if len(members) > 1:
+            lines.append(f"{key}/（{len(members)} 个文件）")
+        else:
+            lines.append(members[0])          # 单个文件直接把路径写出来，别藏
+    if len(lines) > limit:
+        lines = lines[:limit] + [f"… 另有 {len(lines) - limit} 项"]
+    return lines
 
 
 def build(root: Path, out_dir: Path | None, platform: bool, flat_root: bool,
@@ -135,6 +171,12 @@ def build(root: Path, out_dir: Path | None, platform: bool, flat_root: bool,
     if len(payload) > 12:
         print(f"    … 另有 {len(payload) - 12} 个")
 
+    excluded = _excluded(root)
+    if excluded:
+        print(f"  已排除  ：{len(excluded)} 个文件（构建缓存 / 仓库元数据 / 发布图标）")
+        for line in _summarize(excluded, root):
+            print(f"    - {line}")
+
     if dry_run:
         print("\n[dry-run] 未落盘。")
         return 0
@@ -165,6 +207,10 @@ def build(root: Path, out_dir: Path | None, platform: bool, flat_root: bool,
         if platform:
             print("     说明：技能上传包就是技能目录，**不需要** .codebuddy-plugin/plugin.json，")
             print("           所以本包与默认包内容一致（加不加 --platform 都一样）")
+        icon_dir = root / "icons"
+        if icon_dir.is_dir() and any(icon_dir.iterdir()):
+            print("     发布图标：icons/ 下的图标**没打进这个包** —— 上传技能时在平台")
+            print("               「图标」处单独提交（512×512、PNG/JPG、≤500KB）")
     elif platform:
         print("     上传 open.workbuddy.cn 用这个包 —— 专家包（插件形态），字段按**专家**规范"
               "（expertType / displayName / categoryId…）")

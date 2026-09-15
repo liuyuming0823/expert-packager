@@ -1,16 +1,17 @@
 ---
 name: expert-packager
+slug: expert-packager
 display_name: 专家生成器 · 生成/校验/安装/打包
 display_name_en: Expert Generator & Packager
-description: >-
-  生成、校验、安装、打包 WorkBuddy 专家包（Agent 型 / Team 型），产出符合 open.workbuddy.cn 开放平台规范的专家包与插件包，生成后自动安装到专家中心。当用户说「生成专家」「创建专家」「做个专家」「打包专家」「专家打包」「专家上架」「专家包」「专家校验」「导入专家」「修改专家」「打包插件」「开放平台上传」时使用。 也适用于「生成专家包」「专家合规」「编辑专家」「插件打包」「expert package」「package expert」这类说法。
-description_zh: >-
-  生成/校验/安装/打包 WorkBuddy 专家包，产出符合开放平台规范的专家与插件包
-description_en: >-
-  Generate, validate, install and package WorkBuddy Expert packages (Agent / Team) compliant with the open.workbuddy.cn platform spec.
-category: development
-version: 1.3.3
+displayName: 专家生成器
+description: "生成、校验、安装、打包 WorkBuddy 专家包（Agent 型 / Team 型），产出符合 open.workbuddy.cn 开放平台规范的专家包与插件包，生成后自动安装到专家中心。当用户说「生成专家」「创建专家」「做个专家」「打包专家」「专家打包」「专家上架」「专家包」「专家校验」「导入专家」「修改专家」「打包插件」「开放平台上传」时使用。 也适用于「生成专家包」「专家合规」「编辑专家」「插件打包」「expert package」「package expert」这类说法。"
+description_zh: "生成/校验/安装/打包 WorkBuddy 专家包，产出符合开放平台规范的专家与插件包"
+description_en: "Generate, validate, install and package WorkBuddy Expert packages (Agent / Team) compliant with the open.workbuddy.cn platform spec."
+summary: 生成、校验、安装、打包 WorkBuddy 专家包（Agent 型 / Team 型），产出符合开放平台规范的专家包与插件包
+category: dev-programming
+version: 1.3.4
 author: 刘玉明
+tags: [专家生成, 专家打包, 专家校验, 插件打包, expert]
 trigger:
   - 打包专家
   - 生成专家
@@ -281,7 +282,7 @@ python scripts/make_icon.py --check ~/.workbuddy/skill-icons/*.png
 14. **修改前没先读原文件** —— 只改用户要求改的部分，重写整个文件会把已有内容丢掉。
 15. **两条上传线串用** —— 技能传成了插件形态（报「缺少 SKILL.md」），或专家传成了技能目录包（报「缺少 plugin.json」）。**技能传目录，专家传插件。** 分类也别串：技能写 frontmatter 的 `category`，专家写 `categoryId`（数字枚举）。
 16. **技能包按专家的位置装** —— 技能解压到 `~/.workbuddy/skills/<技能名>/`，专家才放 `plugins/marketplaces/my-experts/plugins/`。技能放到 marketplaces 下不会生效。
-17. **技能 frontmatter 缺必填字段** —— 上传要求 `description` / `description_zh` / `description_en` / `version` / `author` 五项齐全，缺一个平台就报必填缺失。
+17. **技能 frontmatter 缺必填字段** —— 上传要求 `description` / `description_zh` / `description_en` / `version` / `author` 五项齐全，缺一个平台就报必填缺失。展示名还要给驼峰 `displayName`，否则商店里显示英文 slug（见坑 23）。
 18. **技能包里出现三级目录** —— 平台只接受「技能根/二级目录/文件」，模板目录里再嵌套一层就会被判「目录层级超限」。模板文件一律平铺在 `templates/` 下。
 19. **生成图直接缩放当图标** —— ImageGen 出的是「1024×1024 圆角方块 + 外圈留白」，右下角还带生成标。整图缩放会带着标和不对称留白；随手按固定框硬切（如 `(0,0,900,900)`）会**一边内容被截、另一边留白**。统一走 `prepare_avatar.py --center --clean`（专家头像）或 `make_icon.py`（技能图标，默认就带这两步）。
 20. **把技能图标放进技能目录** —— 技能图标是平台在「图标」处**单独**收的。放技能目录里，打包时虽会被排除（无害），但**绑定 GitHub 仓库发布时会被平台直接拒收**（报「不支持的文件类型」）。一律输出到技能目录之外（默认 `~/.workbuddy/skill-icons/`），上传时单独提交那张 512×512 的图。
@@ -293,7 +294,22 @@ python scripts/make_icon.py --check ~/.workbuddy/skill-icons/*.png
 
     自查一句话：`git ls-files` 列出的每个文件，都该是 `.md` / `.py` / `.json` / `.txt` / `.sh` / `.yaml` 这类纯文本。
 
+23. **技能的中文展示名写成下划线 `display_name`** —— **平台只认驼峰 `displayName`**。缺了不报错、发布照样成功，但商店里**直接显示英文 slug**（例如 `expert-packager`）—— 静默失败。要发布的技能两个都写：`display_name` 给 WorkBuddy 本机，`displayName` 给平台。同族字段还有：平台发布 CLI 要求 `slug`（与 `name` 一致），缺了硬报错 `SKILL.md 缺少 slug`；`summary` 是商店列表摘要。
+24. **`category` 用平台枚举外的值** —— 平台只认 13 个 key，`development` **不是**其中之一（对应的是 `dev-programming`），传错会上架为「未分类」。另：**frontmatter 里的行尾 `#` 注释会被平台读进字段值**，注释一律独立成行。
+
 ## 变更记录
+
+### v1.3.4
+
+- **修「商店里没有中文名」**：本技能发布后商店里显示英文 slug，根因是 frontmatter 写的是
+  下划线 `display_name`，而**平台只认驼峰 `displayName`**。补 `slug` / `displayName` /
+  `summary` / `tags` 四个平台字段；`display_name` 保留给 WorkBuddy 本机。
+- **`category: development` → `dev-programming`**：`development` 不在平台 13 个枚举内，
+  这是商店里显示「未分类」的原因。
+- **description 三件套由 YAML 折叠块改为单行、`tags` 改内联列表**：平台解析器只读
+  「`key: 值`」那一行，`>-` 会被读成字面量 `>-`，多行列表会被读空。
+- 新增坑 23 / 24。同批改动见 ym-skill-generator v2.2.0（它的 `new_skill.py` 与
+  `audit_skill.py` 已按这套规则生成与校验）。
 
 ### v1.3.3
 

@@ -9,7 +9,7 @@ description_zh: >-
 description_en: >-
   Generate, validate, install and package WorkBuddy Expert packages (Agent / Team) compliant with the open.workbuddy.cn platform spec.
 category: development
-version: 1.3.2
+version: 1.3.3
 author: 刘玉明
 trigger:
   - 打包专家
@@ -207,7 +207,7 @@ python scripts/pack_plugin.py <专家目录> --dry-run
 ### Step 7 · 技能图标（**本技能自己**的，发布时单独上传）
 
 > 注意区分：Step 2 的 `prepare_avatar.py` 处理的是**专家头像**（`avatars/`，要**打进专家包**）；
-> 这里生成的是**技能自己的图标**，由平台单独收，**不进技能包**。
+> 这里生成的是**技能自己的图标**，由平台单独收。它必须落在**技能目录之外**（见下方说明）。
 
 ```bash
 # ① 拿提示词（按本技能 SKILL.md 的展示名与描述拼，保证贴合技能身份）
@@ -215,11 +215,11 @@ python scripts/make_icon.py --prompt
 
 # ② 把提示词交给 ImageGen（size 用 1024x1024），再拿生成图做后处理
 #    默认「居中裁切 + 清右下角生成标 + 缩到 512×512 + 压到 ≤500KB」
-python scripts/make_icon.py <生成图>            # 输出到本技能 icons/
+python scripts/make_icon.py <生成图>            # 输出到 ~/.workbuddy/skill-icons/
 python scripts/make_icon.py <生成图> --out <目录> --name <技能名>
 
 # ③ 上传前自查（只校验，不改文件）
-python scripts/make_icon.py --check icons/*.png
+python scripts/make_icon.py --check ~/.workbuddy/skill-icons/*.png
 ```
 
 | 开关 | 作用 |
@@ -228,9 +228,9 @@ python scripts/make_icon.py --check icons/*.png
 | `--check` | 只做合规检查：512×512、PNG/JPG、≤500KB |
 | `--no-center` / `--no-clean` | 关掉居中裁切 / 关掉清生成标（默认都开） |
 | `--fmt png\|jpg` | 优先输出格式（默认 png；压不进 500KB 时自动降质或换格式） |
-| `--out` / `--name` | 输出目录 / 文件名前缀 |
+| `--out` / `--name` | 输出目录 / 文件名前缀（默认目录可用环境变量 `SKILLHUB_ICON_DIR` 固定） |
 
-- 输出目录默认是本技能根下的 `icons/`。该目录**打包时一律排除**，不会进 zip。
+- 输出目录默认在**技能目录之外**（`~/.workbuddy/skill-icons/`）。**不要**改回技能目录里 —— 见坑 20。
 - 上传技能时，在开放平台创建技能的「图标」处单独提交这个文件。
 - 原理与踩坑（为什么要居中裁切、生成标在哪）见 `references/avatar-spec.md` 末节。
 
@@ -245,7 +245,7 @@ python scripts/make_icon.py --check icons/*.png
 | 安装 / 重新注册 | `python scripts/install_expert.py <dir>` |
 | 压专家头像 | `python scripts/prepare_avatar.py <dir> --center --clean` |
 | 生成技能图标 | `python scripts/make_icon.py --prompt` → `make_icon.py <生成图>` |
-| 技能图标自查 | `python scripts/make_icon.py --check icons/*.png` |
+| 技能图标自查 | `python scripts/make_icon.py --check ~/.workbuddy/skill-icons/*.png` |
 | 打本机包 | `python scripts/pack_plugin.py <dir> --out <out>` |
 | 打**专家**上架包（插件形态） | `python scripts/pack_plugin.py <专家目录> --platform --out <out>` |
 | 打**技能**上传包（技能目录） | `python scripts/pack_plugin.py <技能目录> --out <out>` |
@@ -256,9 +256,9 @@ python scripts/make_icon.py --check icons/*.png
 - `scripts/` —— 全部执行逻辑（`_common.py` 是被各脚本 import 的共用库，不单独调用）
 - `references/` —— 按需加载：`expert-spec.md`（plugin.json 字段与分类）、`agent-md-spec.md`（Agent MD 结构）、`avatar-spec.md`（头像与 prompt 构建）、`open-platform.md`（打包上传形态与排错）
 - `templates/` —— Agent / 主理人 / 团员三种 MD 骨架（`agent.md`、`team-lead.md`、`team-member.md`），`new_expert.py` 会直接读取
-- `icons/` —— 本技能自己的发布图标（由 `make_icon.py` 生成），**不进技能包**，发布时在平台单独上传
+- 本技能**没有** `icons/` 目录 —— 图标由 `make_icon.py` 输出到技能目录**之外**（`~/.workbuddy/skill-icons/`），发布时在平台单独上传
 
-**打包时默认排除**：构建缓存（`__pycache__`、`node_modules`…）、**仓库元数据**（`.git/`、`.gitignore`、`.gitattributes`、`README.md`、`LICENSE`…）、**发布图标**（`icons/`）。
+**打包时默认排除**：构建缓存（`__pycache__`、`node_modules`…）、**仓库元数据**（`.git/`、`.gitignore`、`.gitattributes`、`README.md`、`LICENSE`…）、**发布图标**（`icons/`，防御性规则）。
 包只装技能本身，仓库的东西一个都不带。
 
 核心流程只用标准库。Pillow 仅在压缩头像时用到，属于可选依赖：`python scripts/setup.py --install-pillow`。
@@ -284,10 +284,27 @@ python scripts/make_icon.py --check icons/*.png
 17. **技能 frontmatter 缺必填字段** —— 上传要求 `description` / `description_zh` / `description_en` / `version` / `author` 五项齐全，缺一个平台就报必填缺失。
 18. **技能包里出现三级目录** —— 平台只接受「技能根/二级目录/文件」，模板目录里再嵌套一层就会被判「目录层级超限」。模板文件一律平铺在 `templates/` 下。
 19. **生成图直接缩放当图标** —— ImageGen 出的是「1024×1024 圆角方块 + 外圈留白」，右下角还带生成标。整图缩放会带着标和不对称留白；随手按固定框硬切（如 `(0,0,900,900)`）会**一边内容被截、另一边留白**。统一走 `prepare_avatar.py --center --clean`（专家头像）或 `make_icon.py`（技能图标，默认就带这两步）。
-20. **把图标打进技能包** —— 技能图标是平台在「图标」处**单独**收的，塞进 zip 只是多一批无用文件。`icons/` 已在打包时排除；上传时单独提交那张 512×512 的图。
-21. **把 `.git` / `README.md` 一类打进包** —— 技能目录同时是个 git 仓库时最容易踩：包里混进 `.gitignore`、`.gitattributes`、`README.md` 这些东西，既没用又可能漏出仓库信息。打包器已按「构建缓存 / 仓库元数据 / 发布图标」三类排除，**别改回去**。
+20. **把技能图标放进技能目录** —— 技能图标是平台在「图标」处**单独**收的。放技能目录里，打包时虽会被排除（无害），但**绑定 GitHub 仓库发布时会被平台直接拒收**（报「不支持的文件类型」）。一律输出到技能目录之外（默认 `~/.workbuddy/skill-icons/`），上传时单独提交那张 512×512 的图。
+21. **把 `.git` / `README.md` 一类打进包** —— 技能目录同时是个 git 仓库时最容易踩：包里混进 `.gitignore`、`.gitattributes`、`README.md` 这些东西，既没用又可能漏出仓库信息。打包器已按「构建缓存 / 仓库元数据 / 发布图标」三类排除，**别改回去**。注意：**打包器排除了 ≠ 发布时排除了** —— SkillHub 扫描 GitHub 仓库走的是它自己那套白名单，见坑 22。
+22. **技能目录里留下非白名单文件，整次发布被拒** —— SkillHub 绑定 GitHub 仓库发布时，按「文件类型白名单」逐个校验仓库文件，命中一个就整单拒收（报「**不支持的文件类型: xxx**」）。除图标外，最易忽略的是 **git 仓库自带的元数据**（`.gitignore`、`.gitattributes` —— 点开头的隐藏文件一律不在白名单）和**非白名单扩展名**（`.template`、`.zip` 等）。三条对策：
+    - `.gitignore` / `.gitattributes` → 迁到 `.git/info/exclude` 与 `.git/info/attributes`（git 官方支持的位置，行为完全一致，但不在工作区、不进仓库，因而扫不到）
+    - 模板类文件用 `.md` 后缀，别用 `.template`
+    - 图标输出到技能目录之外
+
+    自查一句话：`git ls-files` 列出的每个文件，都该是 `.md` / `.py` / `.json` / `.txt` / `.sh` / `.yaml` 这类纯文本。
 
 ## 变更记录
+
+### v1.3.3
+
+- **修发布阻断**：绑定 GitHub 仓库发布时，平台按「文件类型白名单」扫描仓库里的文件，
+  技能目录里的 `.gitignore`、`.gitattributes`、`icons/*.png` 会让整次发布被拒
+  （报「不支持的文件类型」）。本技能自身做了两处清理，并把这项写进坑 22：
+  - `.gitignore` / `.gitattributes` → 迁到 `.git/info/exclude` 与 `.git/info/attributes`
+  - 图标不再输出到技能目录内：`make_icon.py` 默认改到 `~/.workbuddy/skill-icons/`
+    （可用 `--out` 或环境变量 `SKILLHUB_ICON_DIR` 覆盖）
+- 「打包时排除图标」的规则**保留**（防御性），但职责已从「排除」改为「根本不该放进去」。
+- 新增坑 22（非白名单文件导致发布被拒）。
 
 ### v1.3.2
 

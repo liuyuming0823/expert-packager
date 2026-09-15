@@ -1,7 +1,7 @@
 ---
 name: expert-packager
-display_name: 打包专家 · 专家生成/打包/安装
-display_name_en: Expert Packager
+display_name: 专家生成器 · 生成/校验/安装/打包
+display_name_en: Expert Generator & Packager
 description: >-
   生成、校验、安装、打包 WorkBuddy 专家包（Agent 型 / Team 型），产出符合 open.workbuddy.cn 开放平台规范的专家包与插件包，生成后自动安装到专家中心。当用户说「生成专家」「创建专家」「做个专家」「打包专家」「专家打包」「专家上架」「专家包」「专家校验」「导入专家」「修改专家」「打包插件」「开放平台上传」时使用。 也适用于「生成专家包」「专家合规」「编辑专家」「插件打包」「expert package」「package expert」这类说法。
 description_zh: >-
@@ -9,7 +9,7 @@ description_zh: >-
 description_en: >-
   Generate, validate, install and package WorkBuddy Expert packages (Agent / Team) compliant with the open.workbuddy.cn platform spec.
 category: development
-version: 1.3.0
+version: 1.3.1
 author: 刘玉明
 trigger:
   - 打包专家
@@ -33,7 +33,7 @@ trigger:
 agent_created: true
 ---
 
-# 打包专家 · 专家生成/打包/安装 (expert-packager)
+# 专家生成器 · 生成/校验/安装/打包 (expert-packager)
 
 把「手写一堆 JSON 和 Markdown、再摆到对的目录、再打成 zip」压成一条命令：
 说清想让专家做什么 → 本机专家中心多出一个能直接用的专家 → 需要时分发或上架。
@@ -248,6 +248,14 @@ python scripts/pack_plugin.py <专家目录> --dry-run
 19. **生成图直接缩放当图标** —— ImageGen 出的是「1024×1024 圆角方块 + 外圈留白」，右下角还带生成标。整图缩放会带着标和不对称留白；随手按固定框硬切（如 `(0,0,900,900)`）会**一边内容被截、另一边留白**。统一走 `prepare_avatar.py --center --clean`。
 
 ## 变更记录
+
+### v1.3.1
+
+- 中文展示名由「打包专家」改为「**专家生成器**」，与 `skill-generator` 的「技能生成器」成对，
+  统一为「主名 · 能力词」格式。`name`、目录名、仓库名仍是 `expert-packager`，不影响安装与调用。
+- `display_name_en` 同步为 `Expert Generator & Packager`（保留 `Packager` 关键词）。
+- **触发词「打包专家」继续保留** —— 它是用户的自然说法，删掉会降低命中率。
+  展示名和触发词是两回事：展示名管辨识，触发词管命中。
 
 ### v1.3.0
 

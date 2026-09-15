@@ -1,4 +1,4 @@
-# expert-packager · 打包专家
+# expert-packager · 专家生成器
 
 把「手写一堆 JSON 和 Markdown、再摆到对的目录、再打成 zip」压成一条命令。
 
@@ -100,3 +100,10 @@ python scripts/setup.py --install-pillow
 2. **只建目录不注册就收工** —— 专家中心不会出现它，注册（`install_expert.py`）是生成流程的一部分。
 3. **四处标识不一致** —— `name` / `agentName` / 目录名 / MD 文件名任何一处对不上都会加载不到，改名只能重建。
 4. **上传形态搞混** —— 技能上架传技能目录包（顶层 `{skill-name}/SKILL.md`），专家上架才用 `--platform` 出插件形态包。
+
+## 相关项目
+
+- [skill-generator](https://github.com/liuyuming0823/skill-generator) —— 配套的**技能**生成器：按需求生成技能骨架、体检脱敏、打包上架
+
+这对工具的分工是：**expert-packager 管「专家」，skill-generator 管「技能」**，两条上传规范不复用，别混。
+

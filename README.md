@@ -103,7 +103,7 @@ python scripts/setup.py --install-pillow
 
 ## 相关项目
 
-- [skill-generator](https://github.com/liuyuming0823/skill-generator) —— 配套的**技能**生成器：按需求生成技能骨架、体检脱敏、打包上架
+- [ym-skill-generator](https://github.com/liuyuming0823/ym-skill-generator) —— 配套的**技能**生成器：按需求生成技能骨架、体检脱敏、打包上架
 
-这对工具的分工是：**expert-packager 管「专家」，skill-generator 管「技能」**，两条上传规范不复用，别混。
+这对工具的分工是：**expert-packager 管「专家」，ym-skill-generator 管「技能」**，两条上传规范不复用，别混。
 

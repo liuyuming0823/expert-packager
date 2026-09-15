@@ -88,7 +88,7 @@
 别去合成 `plugin.json`、别套 `skills/` 子目录，那只会给自己制造「缺少 SKILL.md」的报错。
 
 > 若确实要把某个技能**作为插件**分发（挂到插件下、进团队 marketplace），
-> 用 skill-generator 的 `pack_skill.py <技能目录> --as-plugin` 另打一个插件形态包。
+> 用 ym-skill-generator 的 `pack_skill.py <技能目录> --as-plugin` 另打一个插件形态包。
 > 那个包**不能**用于开放平台的技能类目上传。
 
 平台若报结构类错误、提示不接受顶层目录，加 `--flat-root` 重打一次。
